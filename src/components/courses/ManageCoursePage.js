@@ -4,14 +4,17 @@ import { newCourse } from "../../../tools/mockData";
 import { useSelector, useDispatch } from "react-redux";
 import { loadAuthors } from "../../redux/actions/authorActions";
 import { loadCourses, saveCourse } from "../../redux/actions/courseActions";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
+import Spinner from "../common/Spinner";
+import { toast } from "react-toastify";
 
 const ManageCoursePage = () => {
   const courses = useSelector(state => state.courses);
   const authors = useSelector(state => state.authors);
-  const navigate = useNavigate();
   const dispatch = useDispatch();
   const [course, setCourse] = useState(newCourse);
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState({});
   const { slug } = useParams();
 
   useEffect(() => {
@@ -39,17 +42,43 @@ const ManageCoursePage = () => {
     }));
   }
 
-  function handleSave(event) {
-    event.preventDefault();
-    dispatch(saveCourse(course)).then(() => navigate("/courses"));
+  function formIsValid() {
+    const { title, authorId, category } = course;
+    const errors = {};
+
+    if (!title) errors.title = "Title is required.";
+    if (!authorId) errors.author = "Author is required";
+    if (!category) errors.category = "Category is required";
+
+    setErrors(errors);
+    return Object.keys(errors).length === 0;
   }
 
-  return (
+  function handleSave(event) {
+    event.preventDefault();
+    if (!formIsValid) return;
+    setSaving(true);
+    dispatch(saveCourse(course))
+      .then(() => {
+        toast.success("Course saved.");
+        history.push("/courses");
+      })
+      .catch(error => {
+        setSaving(false);
+        setErrors({ onSave: error.message });
+      });
+  }
+
+  return authors.length === 0 || courses.length === 0 ? (
+    <Spinner />
+  ) : (
     <CourseForm
       authors={authors}
       course={course}
       onChange={handleChange}
       onSave={handleSave}
+      saving={saving}
+      errors={errors}
     />
   );
 };
